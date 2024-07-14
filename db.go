@@ -16,10 +16,11 @@ import (
 type DB struct {
 	options    Options
 	mu         *sync.RWMutex
-	fileIds    []int          // 文件 id ，只能在加载索引的时候使用，不能在其他地方更新和使用
-	activeFile *data.DataFile //当前活跃数据文件，可以用于写入
-	olderFiles map[uint32]*data.DataFile
-	index      index.Indexer //内存索引
+	fileIds    []int                     // 文件 id ，只能在加载索引的时候使用，不能在其他地方更新和使用
+	activeFile *data.DataFile            // 当前活跃数据文件，可以用于写入
+	olderFiles map[uint32]*data.DataFile //旧的数据文件，只能用于读
+	index      index.Indexer             // 内存索引
+	seqNo      uint64                    //事务序列号，全局递增
 }
 
 // Open 打开 bitcask 存储引擎实例
@@ -102,7 +103,7 @@ func (db *DB) Put(key []byte, value []byte) error {
 	}
 
 	//追加写入到当前活跃数据文件当中
-	pos, err := db.appendLogRecord(log_record)
+	pos, err := db.appendLogRecordWithLock(log_record)
 	if err != nil {
 		return err
 	}
@@ -129,7 +130,7 @@ func (db *DB) Delete(key []byte) error {
 	// 构造 LogRecord，标识其是被删除的
 	logRecord := &data.LogRecord{Key: key, Type: data.LogRecordDeleted}
 	// 写入到数据文件当中
-	_, err := db.appendLogRecord(logRecord)
+	_, err := db.appendLogRecordWithLock(logRecord)
 	if err != nil {
 		return nil
 	}
@@ -220,10 +221,14 @@ func (db *DB) getValueByPosition(logRecordPos *data.LogRecordPos) ([]byte, error
 	return logrecord.Value, nil
 }
 
-// 追加写数据到活跃文件中
-func (db *DB) appendLogRecord(LogRecord *data.LogRecord) (*data.LogRecordPos, error) {
+func (db *DB) appendLogRecordWithLock(LogRecord *data.LogRecord) (*data.LogRecordPos, error) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
+	return db.appendLogRecord(LogRecord)
+}
+
+// 追加写数据到活跃文件中
+func (db *DB) appendLogRecord(LogRecord *data.LogRecord) (*data.LogRecordPos, error) {
 
 	//判断当前活跃文件是否存在，因为数据库在没有写入的时候是没有文件生成的
 	//如果为空则初始化数据文件
