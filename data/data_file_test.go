@@ -67,7 +67,7 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 		Key:   []byte("name"),
 		Value: []byte("bitcask kv go"),
 	}
-	res1, size1 := EncodelLogRecord(rec1)
+	res1, size1 := EncodeLogRecord(rec1)
 	err = dataFile.Write(res1)
 	assert.Nil(t, err)
 
@@ -81,7 +81,7 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 		Key:   []byte("name"),
 		Value: []byte("a new value"),
 	}
-	res2, size2 := EncodelLogRecord(rec2)
+	res2, size2 := EncodeLogRecord(rec2)
 	err = dataFile.Write(res2)
 	assert.Nil(t, err)
 
@@ -96,7 +96,7 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 		Value: []byte(""),
 		Type:  LogRecordDeleted,
 	}
-	res3, size3 := EncodelLogRecord(rec3)
+	res3, size3 := EncodeLogRecord(rec3)
 	err = dataFile.Write(res3)
 	assert.Nil(t, err)
 

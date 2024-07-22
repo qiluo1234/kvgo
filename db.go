@@ -20,7 +20,8 @@ type DB struct {
 	activeFile *data.DataFile            // 当前活跃数据文件，可以用于写入
 	olderFiles map[uint32]*data.DataFile //旧的数据文件，只能用于读
 	index      index.Indexer             // 内存索引
-	seqNo      uint64                    //事务序列号，全局递增
+	seqNo      uint64                    // 事务序列号，全局递增
+	isMerging  bool                      // 是否正在 merge
 }
 
 // Open 打开 bitcask 存储引擎实例
@@ -242,7 +243,7 @@ func (db *DB) appendLogRecord(LogRecord *data.LogRecord) (*data.LogRecordPos, er
 	}
 
 	//写入数据编码
-	encRecord, size := data.EncodelLogRecord(LogRecord)
+	encRecord, size := data.EncodeLogRecord(LogRecord)
 	// 如果写入的数据已经到达了活跃文件的阈值，则关闭活跃文件，并打开新的文件
 	if db.activeFile.WriteOff+size > db.options.DataFileSize {
 		//先持久化数据文件，保证已有的数据持久到磁盘当中

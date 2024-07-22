@@ -13,7 +13,7 @@ func TestEncodelLogRecord(t *testing.T) {
 		Value: []byte("bitcask-go"),
 		Type:  LogRecordNormal,
 	}
-	res1, n1 := EncodelLogRecord(rec1)
+	res1, n1 := EncodeLogRecord(rec1)
 	t.Log(res1)
 	assert.NotNil(t, res1)
 	assert.Greater(t, n1, int64(5))
@@ -23,7 +23,7 @@ func TestEncodelLogRecord(t *testing.T) {
 		Key:  []byte("name"),
 		Type: LogRecordNormal,
 	}
-	res2, n2 := EncodelLogRecord(rec2)
+	res2, n2 := EncodeLogRecord(rec2)
 	assert.NotNil(t, res2)
 	assert.Greater(t, n2, int64(5))
 	t.Log(res2)
@@ -33,7 +33,7 @@ func TestEncodelLogRecord(t *testing.T) {
 		Value: []byte("bitcask-go"),
 		Type:  LogRecordDeleted,
 	}
-	res3, n3 := EncodelLogRecord(rec3)
+	res3, n3 := EncodeLogRecord(rec3)
 	assert.NotNil(t, res3)
 	assert.Greater(t, n3, int64(5))
 }

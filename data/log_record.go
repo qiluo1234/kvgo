@@ -51,7 +51,7 @@ type TransactionRecord struct {
 // +-----------+---------+-----------+-------------+-------+--------+
 //
 //	4字节       1字节    变长（最大5）     变长（最大5）     变长       变长
-func EncodelLogRecord(logRecord *LogRecord) ([]byte, int64) {
+func EncodeLogRecord(logRecord *LogRecord) ([]byte, int64) {
 	//初始化一个 header 部分的字节数组
 	header := make([]byte, maxLogRecordHeaderSize)
 
@@ -77,6 +77,24 @@ func EncodelLogRecord(logRecord *LogRecord) ([]byte, int64) {
 	binary.LittleEndian.PutUint32(encBytes[:4], crc)
 
 	return encBytes, int64(size)
+}
+
+// EncodeLogRecordPos 对位置信息进行编码
+func EncodeLogRecordPos(pos *LogRecordPos) []byte {
+	buf := make([]byte, binary.MaxVarintLen32+binary.MaxVarintLen64)
+	var index = 0
+	index += binary.PutVarint(buf[index:], int64(pos.Fid))
+	index += binary.PutVarint(buf[index:], pos.Offset)
+	return buf[:index]
+}
+
+// DecodeLogRecordPos 解码 LogRecordPos
+func DecodeLogRecordPos(buf []byte) *LogRecordPos {
+	var index = 0
+	fileId, n := binary.Varint(buf[index:])
+	index += n
+	offset, _ := binary.Varint(buf[index:])
+	return &LogRecordPos{Fid: uint32(fileId), Offset: offset}
 }
 
 // 对字节数组中的Header 信息进行解码
