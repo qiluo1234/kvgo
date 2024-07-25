@@ -171,15 +171,90 @@ func (db *DB) loadMergeFiles() error {
 
 	// 查找标识 merge 完成的文件，判断 merge 是否处理完了
 	var mergeFinished bool
+	var mergeFileNames []string
 	for _, entry := range dirEntries {
 		if entry.Name() == data.MergeFinishedFileName {
 			mergeFinished = true
 		}
+		mergeFileNames = append(mergeFileNames, entry.Name())
 	}
 
 	// 没有 merge 完成则直接返回
 	if !mergeFinished {
 		return nil
 	}
-	return err
+	//nonMergeFileId, err := db.get
+	nonMergeFileId, err := db.getNonMergeFileId(mergePath)
+	if err != nil {
+		return nil
+	}
+
+	// 删除旧的数据文件
+	var fileId uint32 = 0
+	for ; fileId < nonMergeFileId; fileId++ {
+		fileName := data.GetDataFileName(db.options.DirPath, fileId)
+		if _, err := os.Stat(fileName); err == nil {
+			if err := os.Remove(fileName); err != nil {
+				return err
+			}
+		}
+	}
+
+	// 将新的数据文件移动到数据目录中
+	for _, fileName := range mergeFileNames {
+		srcPath := filepath.Join(mergePath, fileName)
+		destPath := filepath.Join(db.options.DirPath, fileName)
+		if err := os.Rename(srcPath, destPath); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (db *DB) getNonMergeFileId(dirPath string) (uint32, error) {
+	mergeFinishedFile, err := data.OpenMergeFinishedFile(dirPath)
+	if err != nil {
+		return 0, err
+	}
+	record, _, err := mergeFinishedFile.ReadLogRecord(0)
+	if err != nil {
+		return 0, err
+	}
+	nonMergeFileId, err := strconv.Atoi(string(record.Value))
+	if err != nil {
+		return 0, err
+	}
+	return uint32(nonMergeFileId), nil
+}
+
+// 从 hint 文件中加载索引
+func (db *DB) loadIndexFromHintFile() error {
+	// 查看 hint 索引文件是否存在
+	hintFileName := filepath.Join(db.options.DirPath, data.HintFileName)
+	if _, err := os.Stat(hintFileName); os.IsNotExist(err) {
+		return nil
+	}
+
+	// 打开 hint 索引文件
+	hintFile, err := data.OpenHintFile(db.options.DirPath)
+	if err != nil {
+		return err
+	}
+
+	// 读取文件中的索引
+	var offset int64 = 0
+	for {
+		logRecord, size, err := hintFile.ReadLogRecord(offset)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		// 解码拿到实际的位置索引
+		pos := data.DecodeLogRecordPos(logRecord.Value)
+		db.index.Put(logRecord.Key, pos)
+		offset += size
+	}
+	return nil
 }

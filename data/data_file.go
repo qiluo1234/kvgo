@@ -27,10 +27,10 @@ type DataFile struct {
 }
 
 // OpenDataFile 打开新的数据文件
-func OpenDataFile(dirPath string, fileID uint32) (*DataFile, error) {
+func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
 
-	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileID)+DataFilesNameSuffix)
-	return newDataFile(fileName, fileID)
+	fileName := GetDataFileName(dirPath, fileId)
+	return newDataFile(fileName, fileId)
 }
 
 // OpenHintFile 打开 Hint 索引文件
@@ -43,6 +43,10 @@ func OpenHintFile(dirPath string) (*DataFile, error) {
 func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
 	fileName := filepath.Join(dirPath, MergeFinishedFileName)
 	return newDataFile(fileName, 0)
+}
+
+func GetDataFileName(dirPath string, fileId uint32) string {
+	return filepath.Join(dirPath, fmt.Sprintf("%09d", fileId)+DataFilesNameSuffix)
 }
 
 func newDataFile(fileName string, fileID uint32) (*DataFile, error) {
